@@ -1,0 +1,5 @@
+apiVersion: v2
+name: ray-serve
+version: 0.1.0
+appVersion: "1.0"
+description: Ray Serve deployment for batch LLM scoring

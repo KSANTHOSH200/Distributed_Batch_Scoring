@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ray-serve
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ray-serve
+  template:
+    metadata:
+      labels:
+        app: ray-serve
+    spec:
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Equal"
+          value: "present"
+          effect: "NoSchedule"
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              cpu: "8"
+              memory: "30Gi"
+            requests:
+              cpu: "4"
+              memory: "16Gi"

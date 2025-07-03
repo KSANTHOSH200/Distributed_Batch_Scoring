@@ -1,0 +1,11 @@
+image:
+  repository: REPLACE_ME/batch-scorer
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+autoscaling:
+  queueDepthTarget: 8  # custom metric exposed by Ray Serve
