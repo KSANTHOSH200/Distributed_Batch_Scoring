@@ -1,0 +1,44 @@
+name: cd
+on:
+  push:
+    tags:
+      - "v*.*.*"     # deploy on version tags like v1.2.3
+  workflow_dispatch:   # allow manual trigger from UI
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: batch-scorer
+  IMAGE_REPO: ${{ secrets.ECR_REPO }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write      # OIDC for AWS STS
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS creds (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Derive image tag
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push image to ECR
+        run: |
+          docker build -t $IMAGE_REPO:${{ steps.vars.outputs.tag }} app/
+          aws ecr get-login-password | docker login --username AWS --password-stdin $(echo $IMAGE_REPO | cut -d/ -f1)
+          docker push $IMAGE_REPO:${{ steps.vars.outputs.tag }}
+
+      - name: Deploy new version with Helm
+        run: |
+          helm upgrade --install ray-serve ./helm/ray-serve \
+            --namespace serve --create-namespace \
+            --set image.repository=$IMAGE_REPO \
+            --set image.tag=${{ steps.vars.outputs.tag }}
